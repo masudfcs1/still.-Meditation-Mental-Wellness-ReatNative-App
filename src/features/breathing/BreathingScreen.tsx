@@ -10,29 +10,49 @@ import { PracticeInterval, useAppStore } from '../../store/useAppStore';
 import { useTheme } from '../../theme';
 import { Navigate } from '../../types';
 import { BreathingMoments } from './BreathingMoments';
-import { breathingDurations, resolveBreathingDuration, type BreathingDuration, type BreathingMoment } from './presets';
+import { breathingDurations, type BreathingDuration, type BreathingMoment } from './presets';
+import { BreathingLibrary } from './BreathingLibrary';
+import { breathingExercises as exercises, resolveBreathingRoute, type BreathingCategory, type BreathingExerciseId, type BreathingPracticeOption } from './catalog';
 
-type PhaseName = 'Inhale' | 'Hold' | 'Exhale' | 'Rest';
-interface BreathingExercise { id: string; name: string; subtitle: string; description: string; benefit: string; pattern: { name: PhaseName; seconds: number }[] }
-const exercises: BreathingExercise[] = [
-  { id: 'box', name: 'Box breathing', subtitle: 'Find your balance', description: 'Four equal parts. A little structure to help you feel steady and present.', benefit: 'A gentle reset for busy moments', pattern: [{ name: 'Inhale', seconds: 4 }, { name: 'Hold', seconds: 4 }, { name: 'Exhale', seconds: 4 }, { name: 'Rest', seconds: 4 }] },
-  { id: '478', name: '4–7–8 breathing', subtitle: 'Slow down, soften', description: 'Breathe in softly, pause, then let your breath out slowly. Follow a pace that feels comfortable.', benefit: 'Create space to unwind', pattern: [{ name: 'Inhale', seconds: 4 }, { name: 'Hold', seconds: 7 }, { name: 'Exhale', seconds: 8 }] },
-  { id: 'deep', name: 'Deep breathing', subtitle: 'Come back to yourself', description: 'Let the belly gently rise as you inhale. Release your breath without pushing.', benefit: 'Reconnect with your natural rhythm', pattern: [{ name: 'Inhale', seconds: 5 }, { name: 'Exhale', seconds: 5 }] },
-  { id: 'calm', name: 'Relaxation', subtitle: 'Make room for calm', description: 'An easy inhale followed by a longer, softer exhale. Allow your shoulders to settle.', benefit: 'A peaceful transition into rest', pattern: [{ name: 'Inhale', seconds: 4 }, { name: 'Exhale', seconds: 6 }, { name: 'Rest', seconds: 2 }] },
-  { id: 'focus', name: 'Focus', subtitle: 'One breath at a time', description: 'Keep your attention on a steady rhythm. Whenever your mind wanders, return to the next breath.', benefit: 'A mindful pause before your next task', pattern: [{ name: 'Inhale', seconds: 4 }, { name: 'Hold', seconds: 2 }, { name: 'Exhale', seconds: 4 }, { name: 'Rest', seconds: 2 }] },
-];
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 const compactNames: Record<string, string> = { box: 'Box', '478': '4–7–8', deep: 'Deep', calm: 'Relaxation', focus: 'Focus' };
 const exercisePatterns = Object.fromEntries(exercises.map(exercise => [exercise.id, exercise.pattern]));
 
-export function BreathingScreen({ onNavigate, onPrepare }: { onNavigate: Navigate; onPrepare?: () => void }) {
-  const { exercise: routeExercise, duration: routeDuration } = useLocalSearchParams<{ exercise?: string; duration?: string | string[] }>();
-  const exerciseId = exercises.some(item => item.id === routeExercise) ? routeExercise! : 'box';
-  const initialDuration = resolveBreathingDuration(routeDuration);
-  return <BreathingPractice key={`${exerciseId}:${initialDuration}`} exerciseId={exerciseId} initialDuration={initialDuration} onNavigate={onNavigate} onPrepare={onPrepare} />;
+export function BreathingScreen({ onPrepare }: { onNavigate: Navigate; onPrepare?: () => void }) {
+  const params = useLocalSearchParams<{ exercise?: string; duration?: string; category?: string; practice?: string }>();
+  const selection = resolveBreathingRoute(params);
+  function open(params: Record<string, string> = {}) {
+    router.replace({ pathname: '/breathing', params });
+    onPrepare?.();
+  }
+  if (selection.view !== 'practice' || !selection.exercise) {
+    return <BreathingLibrary
+      category={selection.category}
+      onChooseCategory={category => open({ category: category.id })}
+      onChoosePractice={(category, practice) => open({ category: category.id, practice: practice.id, duration: String(practice.duration) })}
+      onAllCategories={() => open()}
+      onQuickStart={() => open({ exercise: 'deep', duration: '3' })}
+    />;
+  }
+  return <BreathingPractice
+    key={`${selection.category?.id || ''}:${selection.practice?.id || ''}:${selection.exercise.id}:${selection.duration}`}
+    exerciseId={selection.exercise.id}
+    initialDuration={selection.duration}
+    category={selection.category}
+    selectedPractice={selection.practice}
+    onPrepare={onPrepare}
+    onBack={() => open(selection.category ? { category: selection.category.id } : {})}
+  />;
 }
 
-function BreathingPractice({ onNavigate, onPrepare, exerciseId, initialDuration }: { onNavigate: Navigate; onPrepare?: () => void; exerciseId: string; initialDuration: BreathingDuration }) {
+function BreathingPractice({ onBack, onPrepare, exerciseId, initialDuration, category, selectedPractice }: {
+  onBack: () => void;
+  onPrepare?: () => void;
+  exerciseId: BreathingExerciseId;
+  initialDuration: BreathingDuration;
+  category?: BreathingCategory;
+  selectedPractice?: BreathingPracticeOption;
+}) {
   const t = useTheme();
   const { width } = useWindowDimensions();
   const circleSize = Math.min(286, width - 92);
@@ -136,13 +156,18 @@ function BreathingPractice({ onNavigate, onPrepare, exerciseId, initialDuration 
     setRunning(false); setFinished(false); setElapsed(0); elapsedRef.current = 0; hasRecorded.current = false;
     scale.set(withTiming(0.72, { duration: 400, reduceMotion: ReduceMotion.System }));
   }
-  function chooseExercise(id: string) { reset(); const nextDuration = id === exerciseId ? duration : 3; setDuration(nextDuration); router.setParams({ exercise: id, duration: String(nextDuration) }); }
+  function chooseExercise(id: BreathingExerciseId) {
+    reset();
+    const nextDuration = id === exerciseId ? duration : 3;
+    setDuration(nextDuration);
+    router.replace({ pathname: '/breathing', params: { exercise: id, duration: String(nextDuration) } });
+  }
   function chooseDuration(minutes: BreathingDuration) { reset(); setDuration(minutes); router.setParams({ duration: String(minutes) }); }
   function chooseMoment(moment: BreathingMoment) {
     if (runningRef.current || (elapsedRef.current > 0 && !hasRecorded.current)) return;
     reset();
     setDuration(moment.duration);
-    router.setParams({ exercise: moment.exerciseId, duration: String(moment.duration) });
+    router.replace({ pathname: '/breathing', params: { exercise: moment.exerciseId, duration: String(moment.duration) } });
     onPrepare?.();
     notify(`${moment.title} is ready. Begin breathing above when you are ready.`);
   }
@@ -161,7 +186,7 @@ function BreathingPractice({ onNavigate, onPrepare, exerciseId, initialDuration 
   }
 
   return <View>
-    <PageTitle eyebrow="A moment for you" title="Just breathe." subtitle="Your breath is always a place to begin again." right={<IconButton icon={ArrowLeft} label="Back to Explore" onPress={() => onNavigate('Explore')} />} />
+    <PageTitle eyebrow={category ? `${category.title} · Your breathing practice` : "A moment for you"} title={selectedPractice?.title || "Just breathe."} subtitle={selectedPractice?.description || "Your breath is always a place to begin again."} right={<IconButton icon={ArrowLeft} label={category ? `Back to ${category.title} practices` : "All breathing categories"} onPress={onBack} />} />
     <View style={[styles.columns, { flexDirection: width >= 1040 ? 'row' : 'column' }]}>
       <View style={{ width: width >= 1040 ? 265 : undefined, gap: 12 }}>
         <T size={11} weight="semibold" color={t.secondary} style={styles.overline}>CHOOSE YOUR PRACTICE</T>

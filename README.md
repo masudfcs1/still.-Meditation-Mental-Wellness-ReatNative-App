@@ -1,5 +1,7 @@
 # still. — Meditation & Mental Wellness
 
+[![App CI](https://github.com/masudfcs1/still.-Meditation-Mental-Wellness-ReatNative-App/actions/workflows/ci.yml/badge.svg)](https://github.com/masudfcs1/still.-Meditation-Mental-Wellness-ReatNative-App/actions/workflows/ci.yml)
+
 **A little more space. A little more you.**
 
 Still is a mobile-first meditation and mental wellness app built with **Expo, React Native, and TypeScript**. It brings timed practices, breathwork, sleep soundscapes, multi-day programs, and personal progress into a calm sage-and-ivory interface that adapts from a phone to a desktop.
@@ -39,9 +41,22 @@ Real screenshots from the responsive web preview, using unseeded local practice 
   </tr>
 </table>
 
-### Breathing routines and reminder setup
+### Breathing library, routines, and reminder setup
 
-The Breathing page includes illustrated Morning reset, Between tasks, and Evening unwind routines. Choosing one prepares its pattern and duration, then brings the timer into view. An unfinished practice stays protected until it is finished or reset.
+The **Breathe** bottom tab opens a library of **10 categories and 20 visually guided practices**, built from five breathing rhythms. Explore **Calm, Energy, Clear mind, Relaxation, Male power, Box breathing, Lung health, Freedom, Recovery, and Stress relief**. Each category opens its own practice choices; choosing one prepares its actual rhythm and suggested duration. The timer supports one, three, five, or ten minutes.
+
+<table>
+  <tr>
+    <th>Breathe categories</th>
+    <th>Desktop breathing library</th>
+  </tr>
+  <tr>
+    <td><a href="docs/screenshots/breathing-categories.png"><img src="docs/screenshots/breathing-categories.png" alt="Mobile Breathe tab with ten breathing categories and illustrated cards" width="300" /></a></td>
+    <td><a href="docs/screenshots/breathing-library-desktop.png"><img src="docs/screenshots/breathing-library-desktop.png" alt="Still desktop breathing library with category cards, practice counts, and a quick start" width="760" /></a></td>
+  </tr>
+</table>
+
+The practice screen also includes illustrated Morning reset, Between tasks, and Evening unwind routines. Choosing one prepares its pattern and duration, then brings the timer into view. An unfinished practice stays protected until it is finished or reset. Existing direct exercise links continue to work; invalid or ambiguous catalog links fall back to the category or library safely.
 
 <p align="center">
   <img src="docs/screenshots/breathing-moments.png" alt="Three illustrated breathing routines in the light theme: morning reset, between tasks, and evening unwind" width="1100" />
@@ -60,7 +75,7 @@ The Breathing page includes illustrated Morning reset, Between tasks, and Evenin
 | **Home** | Daily intention and animated goal progress, precise practice time, mood check-in, streak, weekly overview, recommendations, and a compact program journey card. |
 | **Explore & Meditate** | Search across titles, teachers, categories, and feelings; duration, experience, and teacher filters; category chips; grid and list layouts; meaningful empty states. |
 | **Meditation player** | Real ambient audio playback, play/pause, 15-second seek controls, volume, background sound selection, sleep timer, favorites, and a mini-player while browsing. |
-| **Breathing** | Five visual rhythms: Box, 4–7–8, Deep, Relaxation, and Focus. Three illustrated daily routines prepare a one-, three-, or five-minute timer. Choose a duration, follow animated phases, pause/resume, save favorites, and record a completed practice. Leaving the screen or backgrounding the app pauses the exercise. |
+| **Breathing** | The **Breathe** tab opens 10 categories and 20 guided practice options using five visual rhythms: Box, 4–7–8, Deep, Relaxation, and Focus. Category and practice links select the actual rhythm and duration. Choose 1, 3, 5, or 10 minutes, follow animated phases, pause/resume, save favorites, and record completed practice. Three illustrated daily routines remain available. Leaving the screen or backgrounding the app pauses the exercise. |
 | **Sleep** | Evening session and story catalog, four soundscape entry points, ambient playback, and sleep timer preferences. Story and teacher titles are demonstration catalog content; spoken narration is not included. |
 | **Programs** | Three structured journeys: 7 days of mindfulness, 7 days of better sleep, and 5 days of focus. Lesson details, sequential unlocking, favorites, and locally saved progress. |
 | **Progress** | “Time for yourself” opens first with a **7-day bar chart**. Switch between bar and line views; filter Last 7 days, 1 month, 3 months, 6 months, 1 year, or All; inspect dates and compare with the previous period when data is available. |
@@ -69,7 +84,7 @@ The Breathing page includes illustrated Morning reset, Between tasks, and Evenin
 | **Favorites** | Save and revisit meditations, programs, breathing exercises, sleep sessions, and soundscapes in a filterable personal collection. |
 | **Profile & achievements** | Edit a local profile, choose a daily goal, review personal statistics, and track ten milestones earned from real activity. |
 | **Settings** | Light, dark, and system appearance; sound preferences; scheduled reminders with repeat days and permission controls; help and privacy information; private feedback drafts. |
-| **Responsive design** | Bottom navigation on phones, a sidebar on wider screens, shared design tokens, accessible control labels, and reduced-motion support where applicable. |
+| **Responsive design** | Bottom navigation on phones with a dedicated **Breathe** tab, a sidebar on wider screens, shared design tokens, accessible control labels, and reduced-motion support where applicable. |
 
 ## Implementation status
 
@@ -78,6 +93,7 @@ The Breathing page includes illustrated Morning reset, Between tasks, and Evenin
 | Responsive app screens and navigation | **Implemented** | Expo Router routes, mobile layouts, desktop sidebar, and light/dark themes. |
 | Practice tracking and local persistence | **Implemented** | Actual active time, dated mood check-ins, manual logs, goals, favorites, and program progress are stored locally. |
 | Charts and wellness insights | **Implemented** | Calculated from the same local history used by Home, Profile, Sleep, and achievements. |
+| Breathing library and practice | **Implemented** | Ten categories, 20 practice choices, five shared visual rhythms, validated route and duration selection, and completed practice tracking. Guidance is visual; spoken coaching is not included. |
 | Audio player | **Implemented** | Bundled synthesized ambient loops through `expo-audio`; no prerecorded instruction, spoken stories, or instructor narration. |
 | Content library | **Demonstration catalog** | Session titles, teacher names, program descriptions, and artwork form a preview library. |
 | Reminders | **Implemented; native device verification pending** | Bangladesh-time schedules, repeat days, permission handling, edit/off cancellation, and a five-second test. iOS/Android use local device notifications; the browser requires an open tab. |
@@ -91,8 +107,8 @@ The Breathing page includes illustrated Morning reset, Between tasks, and Evenin
 Use **Node.js 22.13 or newer** and npm. No API keys or backend configuration are required for the current preview.
 
 ```sh
-git clone https://github.com/masudfcs1/still.-Mediation-App-react-native.git
-cd still.-Mediation-App-react-native
+git clone https://github.com/masudfcs1/still.-Meditation-Mental-Wellness-ReatNative-App.git
+cd still.-Meditation-Mental-Wellness-ReatNative-App
 npm ci
 npm run web
 ```
@@ -117,7 +133,7 @@ Use a compatible Expo Go client or a development build for the installed Expo SD
 | `npm run ios` | Start Expo and open an available iOS simulator on macOS. |
 | `npm run lint` | Run Expo ESLint checks. |
 | `npm run typecheck` | Check TypeScript without emitting files. |
-| `npm test` | Run analytics, practice-ledger, and reminder tests. |
+| `npm test` | Run analytics, practice-ledger, reminder, and breathing catalog, route, duration, and routine tests. |
 | `npm run build:web` | Export the web app to `dist/`. |
 
 ## How progress is recorded
@@ -172,7 +188,7 @@ src/
   components/            Shared typography, controls, cards, and feedback
   features/
     analytics/           Charts, calendar, dashboard, and calculation tests
-    breathing/           Breathing timer and animated practice
+    breathing/           Category catalog, routines, animated timer, and route tests
     explore/             Content discovery and filters
     favorites/           Saved practices and programs
     home/                Daily dashboard and journey card
@@ -207,11 +223,17 @@ npm test
 npm run build:web
 ```
 
-The current automated suite contains **99 tests** covering date ranges and labels, calendar and leap-year boundaries, aggregation, comparisons, streaks, mood history, persistence and migration, exact playback credit, seeking, timers, midnight transitions, breathing intervals, manual records, program completion, storage failures, notification permissions, schedule rollback, cancellation, Bangladesh time, and browser cross-tab delivery.
+The current automated suite contains **111 tests** covering date ranges and labels, calendar and leap-year boundaries, aggregation, comparisons, streaks, mood history, persistence and migration, exact playback credit, seeking, timers, midnight transitions, breathing intervals, manual records, program completion, storage failures, notification permissions, schedule rollback, cancellation, Bangladesh time, and browser cross-tab delivery. Breathing coverage also checks every category and practice, preserved rhythm timings, supported durations and routine links, and safe handling of invalid or ambiguous routes.
 
 The responsive web interface has also been reviewed in a browser. Browser review, lint, type checking, and automated tests do not replace native device testing. JavaScript exports for web, Android, and iOS have been verified.
 
-`npm run build:web` creates a deployable export in `dist/`. The app uses single-page web output: configure the production host to serve `index.html` for app routes so direct links such as `/analytics` and `/breathing?exercise=box` work.
+`npm run build:web` creates a deployable export in `dist/`. The app uses single-page web output: configure the production host to serve `index.html` for app routes so direct links such as `/analytics`, `/breathing?category=calm&practice=soft-landing`, and existing `/breathing?exercise=box` links work.
+
+### GitHub Actions
+
+The [App CI workflow](.github/workflows/ci.yml) is configured for **pushes to `main`, pull requests, and manual runs**. It installs locked dependencies with Node.js 24, then runs lint, type checking, and all 111 tests. After those checks pass, separate jobs export the **web, Android, and iOS JavaScript bundles**.
+
+From a completed [workflow run](https://github.com/masudfcs1/still.-Meditation-Mental-Wellness-ReatNative-App/actions/workflows/ci.yml), download the `still-web-<commit>` artifact to inspect or host the web export. Artifacts are retained for **7 days**. These checks validate JavaScript exports; they do not build or sign an APK, Android App Bundle, or IPA, submit to an app store, or replace native device testing.
 
 Before a production release, complete native iOS/Android validation and release builds, replace demonstration catalog content with the intended audio library, and implement any required account, sync, remote push, or payment services. Local reminder delivery is implemented without a backend.
 
