@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
 import { MeditationSession, Mood, Reminder, ThemePreference } from '../types';
+import { validateReminder } from '../features/reminders/model';
 import { allowedGoals, backedLessons, createPracticeId, creditPractice, isValidLocalDate, localDateKey, LogPracticeInput, normalizePracticeRecords, PracticeInterval, PracticeRecord, validManualPractice } from './practiceLedger';
 
 export { localDateKey } from './practiceLedger';
@@ -25,12 +26,12 @@ interface AppState {
   setBackgroundSound: (sound: string) => void; setVolume: (volume: number) => void; setSleepTimer: (minutes: number | null) => void;
   notify: (message: string | null) => void;
 }
-type SavedState = Pick<AppState, 'name' | 'theme' | 'dailyGoal' | 'mood' | 'moodDate' | 'moodHistory' | 'favorites' | 'completedLessons' | 'reminders' | 'completedSessions' | 'backgroundSound' | 'volume' | 'feedbackDraft' | 'sleepTimer'> & { ledgerVersion: 2 };
+type SavedState = Pick<AppState, 'name' | 'theme' | 'dailyGoal' | 'mood' | 'moodDate' | 'moodHistory' | 'favorites' | 'completedLessons' | 'reminders' | 'completedSessions' | 'backgroundSound' | 'volume' | 'feedbackDraft' | 'sleepTimer'> & { ledgerVersion: 2; reminderSetupVersion: 1 };
 const defaultReminders: Reminder[] = [
-  { id: 'morning', title: 'Morning meditation', time: '07:30', enabled: true, days: [1, 2, 3, 4, 5] },
+  { id: 'morning', title: 'Morning meditation', time: '07:30', enabled: false, days: [1, 2, 3, 4, 5] },
   { id: 'evening', title: 'Evening wind-down', time: '21:00', enabled: false, days: [0, 1, 2, 3, 4, 5, 6] },
 ];
-const initialSaved: SavedState = { ledgerVersion: 2, name: 'Masud', theme: 'light', dailyGoal: 20, mood: null, moodDate: null, moodHistory: {},
+const initialSaved: SavedState = { ledgerVersion: 2, reminderSetupVersion: 1, name: 'Masud', theme: 'light', dailyGoal: 20, mood: null, moodDate: null, moodHistory: {},
   favorites: ['let-go', 'restful-sleep', 'mindfulness'], completedLessons: {}, reminders: defaultReminders, completedSessions: [],
   backgroundSound: 'Forest', volume: 0.6, sleepTimer: null, feedbackDraft: '' };
 const resetPlayback = { activeSession: null, activeRunId: null, isPlaying: false, playerExpanded: false, elapsed: 0, listenedSeconds: 0, sleepTimerElapsed: 0 };
@@ -46,11 +47,14 @@ function normalizeSaved(value: unknown): SavedState {
   const completedLessons = backedLessons(raw.completedLessons, completedSessions, raw.ledgerVersion !== 2);
   const reminders = Array.isArray(raw.reminders) ? raw.reminders.flatMap((item): Reminder[] => {
     const reminder = object(item);
-    if (typeof reminder.id !== 'string' || typeof reminder.title !== 'string' || typeof reminder.time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminder.time)) return [];
-    return [{ id: reminder.id, title: reminder.title, time: reminder.time, enabled: reminder.enabled === true,
-      days: Array.isArray(reminder.days) ? [...new Set(reminder.days.filter((day): day is number => typeof day === 'number' && Number.isInteger(day) && day >= 0 && day <= 6))] : [] }];
+    if (typeof reminder.id !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(reminder.id) || typeof reminder.title !== 'string' || !reminder.title.trim() || typeof reminder.time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminder.time)) return [];
+    const days = Array.isArray(reminder.days) ? [...new Set(reminder.days.filter((day): day is number => typeof day === 'number' && Number.isInteger(day) && day >= 0 && day <= 6))].sort() : [];
+    // Earlier versions only previewed reminders. Keep their choices, but require an explicit opt-in to delivery.
+    return [{ id: reminder.id, title: reminder.title.trim().slice(0, 80), time: reminder.time,
+      enabled: raw.reminderSetupVersion === 1 && reminder.enabled === true && days.length > 0, days }];
   }) : defaultReminders;
-  return { ledgerVersion: 2, completedSessions, completedLessons, moodHistory, mood, moodDate, reminders,
+  return { ledgerVersion: 2, reminderSetupVersion: 1, completedSessions, completedLessons, moodHistory, mood, moodDate,
+    reminders: reminders.filter((reminder, index) => reminders.findIndex(item => item.id === reminder.id) === index).slice(0, 8),
     name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : initialSaved.name,
     theme: raw.theme === 'dark' || raw.theme === 'system' || raw.theme === 'light' ? raw.theme : initialSaved.theme,
     dailyGoal: typeof raw.dailyGoal === 'number' && allowedGoals.includes(raw.dailyGoal as typeof allowedGoals[number]) ? raw.dailyGoal : initialSaved.dailyGoal,
@@ -80,6 +84,12 @@ const localStorage: StateStorage = {
   },
   removeItem: async key => { await writes; await AsyncStorage.removeItem(key); },
 };
+
+export const isAppStorageReady = () => canWrite;
+export async function flushAppStorage(): Promise<boolean> {
+  await writes;
+  return canWrite && !storageWriteError;
+}
 
 const persistedCreator = persist<AppState, [], [], SavedState>((set, get) => ({
   ...initialSaved, ...resetPlayback, toast: null, hasHydrated: false, storageError: null,
@@ -115,7 +125,13 @@ const persistedCreator = persist<AppState, [], [], SavedState>((set, get) => ({
   },
   toggleFavorite: id => set(s => ({ favorites: s.favorites.includes(id) ? s.favorites.filter(f => f !== id) : [...s.favorites, id] })),
   completeLesson: (id, day) => { if (get().completedSessions.some(record => record.id === `program:${id}:${day}` && record.lessonCompleted)) set(s => ({ completedLessons: { ...s.completedLessons, [id]: [...new Set([...(s.completedLessons[id] || []), day])] } })); },
-  updateReminder: (id, updates) => set(s => ({ reminders: s.reminders.map(r => r.id === id ? { ...r, ...updates } : r) })),
+  updateReminder: (id, updates) => {
+    const current = get().reminders.find(reminder => reminder.id === id);
+    if (!get().hasHydrated || !current) return;
+    const next = { ...current, ...updates, id };
+    if (validateReminder(next)) return;
+    set(s => ({ reminders: s.reminders.map(reminder => reminder.id === id ? { ...next, days: [...next.days].sort() } : reminder) }));
+  },
   startSession: activeSession => {
     if (!get().hasHydrated || !Number.isFinite(activeSession.duration * 60) || activeSession.duration <= 0) return;
     set({ activeSession, activeRunId: createPracticeId('timer'), isPlaying: true, elapsed: 0, listenedSeconds: 0, sleepTimerElapsed: 0, playerExpanded: true });
@@ -156,7 +172,7 @@ const persistedCreator = persist<AppState, [], [], SavedState>((set, get) => ({
   notify: toast => set({ toast }),
 }), {
   name: 'still-wellness-v1', version: 2, storage: createJSONStorage<SavedState>(() => localStorage),
-  partialize: s => ({ ledgerVersion: 2, name: s.name, theme: s.theme, dailyGoal: s.dailyGoal, mood: s.mood, moodDate: s.moodDate, moodHistory: s.moodHistory,
+  partialize: s => ({ ledgerVersion: 2, reminderSetupVersion: 1, name: s.name, theme: s.theme, dailyGoal: s.dailyGoal, mood: s.mood, moodDate: s.moodDate, moodHistory: s.moodHistory,
     favorites: s.favorites, completedLessons: s.completedLessons, reminders: s.reminders, completedSessions: s.completedSessions,
     backgroundSound: s.backgroundSound, volume: s.volume, feedbackDraft: s.feedbackDraft, sleepTimer: s.sleepTimer }),
   migrate: saved => normalizeSaved(saved),

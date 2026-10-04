@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"],
       "adaptiveIcon": {
         "backgroundColor": "#F4F6EE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -32,7 +33,12 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-router"
+      "expo-router",
+      ["expo-notifications", {
+        "icon": "./assets/notification-icon.png",
+        "color": "#4E7257",
+        "defaultChannel": "still-reminders"
+      }]
     ],
     "scheme": "still"
   }

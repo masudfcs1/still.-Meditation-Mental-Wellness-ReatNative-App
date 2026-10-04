@@ -12,12 +12,13 @@ import { Lora_500Medium } from '@expo-google-fonts/lora/500Medium';
 import { AppNavigation } from './src/navigation/AppNavigation';
 import { AudioEngine } from './src/features/meditation/AudioEngine';
 import { MeditationPlayer } from './src/features/meditation/MeditationPlayer';
+import { ReminderCoordinator } from './src/features/reminders/ReminderCoordinator';
 import { ErrorBoundary, Toast } from './src/components/Feedback';
 import { useTheme } from './src/theme';
 
 function StillApp() {
   const t = useTheme();
-  return <View style={{ flex: 1, backgroundColor: t.background }}><StatusBar style={t.isDark ? 'light' : 'dark'}/><AppNavigation/><AudioEngine/><MeditationPlayer/><Toast/></View>;
+  return <View style={{ flex: 1, backgroundColor: t.background }}><StatusBar style={t.isDark ? 'light' : 'dark'}/><AppNavigation/><AudioEngine/><MeditationPlayer/><ReminderCoordinator/><Toast/></View>;
 }
 export default function App() {
   const [loaded, error] = useFonts({ Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Lora_500Medium });
