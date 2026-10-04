@@ -39,6 +39,20 @@ Real screenshots from the responsive web preview, using unseeded local practice 
   </tr>
 </table>
 
+### Breathing routines and reminder setup
+
+The Breathing page includes illustrated Morning reset, Between tasks, and Evening unwind routines. Choosing one prepares its pattern and duration, then brings the timer into view. An unfinished practice stays protected until it is finished or reset.
+
+<p align="center">
+  <img src="docs/screenshots/breathing-moments.png" alt="Three illustrated breathing routines in the light theme: morning reset, between tasks, and evening unwind" width="1100" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/breathing-moments-dark.png" alt="The same illustrated breathing routines in Still's dark theme" width="1100" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/reminders.png" alt="Mobile reminder settings showing Bangladesh time, permission status, repeat days, and saved reminder times" width="300" />
+</p>
+
 ## Features
 
 | Experience | What's included |
@@ -46,7 +60,7 @@ Real screenshots from the responsive web preview, using unseeded local practice 
 | **Home** | Daily intention and animated goal progress, precise practice time, mood check-in, streak, weekly overview, recommendations, and a compact program journey card. |
 | **Explore & Meditate** | Search across titles, teachers, categories, and feelings; duration, experience, and teacher filters; category chips; grid and list layouts; meaningful empty states. |
 | **Meditation player** | Real ambient audio playback, play/pause, 15-second seek controls, volume, background sound selection, sleep timer, favorites, and a mini-player while browsing. |
-| **Breathing** | Five visual rhythms: Box, 4–7–8, Deep, Relaxation, and Focus. Choose a duration, follow animated phases, pause/resume, save favorites, and record a completed practice. Leaving the screen or backgrounding the app pauses the exercise. |
+| **Breathing** | Five visual rhythms: Box, 4–7–8, Deep, Relaxation, and Focus. Three illustrated daily routines prepare a one-, three-, or five-minute timer. Choose a duration, follow animated phases, pause/resume, save favorites, and record a completed practice. Leaving the screen or backgrounding the app pauses the exercise. |
 | **Sleep** | Evening session and story catalog, four soundscape entry points, ambient playback, and sleep timer preferences. Story and teacher titles are demonstration catalog content; spoken narration is not included. |
 | **Programs** | Three structured journeys: 7 days of mindfulness, 7 days of better sleep, and 5 days of focus. Lesson details, sequential unlocking, favorites, and locally saved progress. |
 | **Progress** | “Time for yourself” opens first with a **7-day bar chart**. Switch between bar and line views; filter Last 7 days, 1 month, 3 months, 6 months, 1 year, or All; inspect dates and compare with the previous period when data is available. |
@@ -54,7 +68,7 @@ Real screenshots from the responsive web preview, using unseeded local practice 
 | **Practice journal** | Log practice completed outside the app with date, duration, category, and an optional title. Review saved records and remove manual entries after confirmation. All totals update immediately. |
 | **Favorites** | Save and revisit meditations, programs, breathing exercises, sleep sessions, and soundscapes in a filterable personal collection. |
 | **Profile & achievements** | Edit a local profile, choose a daily goal, review personal statistics, and track ten milestones earned from real activity. |
-| **Settings** | Light, dark, and system appearance; sound preferences; configurable reminder preferences; help and privacy information; private feedback drafts. |
+| **Settings** | Light, dark, and system appearance; sound preferences; scheduled reminders with repeat days and permission controls; help and privacy information; private feedback drafts. |
 | **Responsive design** | Bottom navigation on phones, a sidebar on wider screens, shared design tokens, accessible control labels, and reduced-motion support where applicable. |
 
 ## Implementation status
@@ -66,7 +80,7 @@ Real screenshots from the responsive web preview, using unseeded local practice 
 | Charts and wellness insights | **Implemented** | Calculated from the same local history used by Home, Profile, Sleep, and achievements. |
 | Audio player | **Implemented** | Bundled synthesized ambient loops through `expo-audio`; no prerecorded instruction, spoken stories, or instructor narration. |
 | Content library | **Demonstration catalog** | Session titles, teacher names, program descriptions, and artwork form a preview library. |
-| Reminders | **Preferences only** | Time, days, type, and enabled state save locally. No notifications are scheduled or sent. |
+| Reminders | **Implemented; native device verification pending** | Bangladesh-time schedules, repeat days, permission handling, edit/off cancellation, and a five-second test. iOS/Android use local device notifications; the browser requires an open tab. |
 | Feedback | **Local draft only** | Saved on the current device; never submitted to a server or sent to another person. |
 | Authentication and cloud sync | **Not implemented** | No account system, backend, cloud database, or cross-device history. |
 | Payments and subscriptions | **Not implemented** | No checkout or subscription service. |
@@ -103,7 +117,7 @@ Use a compatible Expo Go client or a development build for the installed Expo SD
 | `npm run ios` | Start Expo and open an available iOS simulator on macOS. |
 | `npm run lint` | Run Expo ESLint checks. |
 | `npm run typecheck` | Check TypeScript without emitting files. |
-| `npm test` | Run the analytics and practice-ledger test suites. |
+| `npm test` | Run analytics, practice-ledger, and reminder tests. |
 | `npm run build:web` | Export the web app to `dist/`. |
 
 ## How progress is recorded
@@ -122,6 +136,19 @@ Zustand manages state, and AsyncStorage persists the local profile, goals, favor
 
 Existing real practice from the initial prototype is preserved during migration. Demonstration lesson progress is removed unless backed by a recorded lesson.
 
+## Set up reminders
+
+Open the header bell → **Manage reminders**, or Profile → Settings. Choose a reminder, set its time, select repeat days, and turn it on. All reminder times use **Bangladesh time (Asia/Dhaka, UTC+6)**. Practice history retains its existing device-local dates.
+
+- **iOS and Android:** grant notification permission when prompted. The operating system delivers scheduled local notifications while Still is closed. Tapping one opens meditation, sleep, or breathwork. Edits replace old schedules; turning a reminder off cancels it.
+- **Browser:** in-app reminders work while a tab stays open. Browser notifications are optional and require permission. Closed or suspended browsers cannot reliably deliver timed alerts; no remote push service is configured. Open tabs coordinate to avoid duplicate alerts and respect saved schedule changes.
+- **Try it:** tap **Send a test reminder** for an alert after about five seconds. Tests never add practice time or enable a repeating schedule.
+- **Saved preferences:** schedules are restored after loading and refreshed when the app returns to the foreground. Earlier preview-only reminders retain their times and days but require an explicit opt-in to start delivery. Permission and storage failures are shown without falsely saving a successful setup.
+
+Native configuration lives in `app.json`, including the notification channel, Android notification icon, and `SCHEDULE_EXACT_ALARM` permission. Build a new iOS/Android development or release binary after installing this native module; a web export cannot apply native notification configuration. Device notification permission, Focus modes, battery restrictions, and Android Alarms & reminders access can affect sound or timing. Android uses an inexact fallback when exact-alarm access is unavailable.
+
+On iOS, repeating calendar notifications explicitly use Asia/Dhaka. Android's weekly notification API uses device-local time, so Still converts the Bangladesh schedule and refreshes it on app open. **Reopen Still after changing the Android device timezone or crossing a daylight-saving transition** to update that conversion. Native delivery still needs verification on physical iOS and Android devices.
+
 ## Tech stack
 
 | Layer | Technology |
@@ -130,6 +157,7 @@ Existing real practice from the initial prototype is preserved during migration.
 | Language | TypeScript 6 |
 | Navigation | Expo Router |
 | State and persistence | Zustand 5, AsyncStorage |
+| Reminders | `expo-notifications` for iOS/Android; optional browser notifications and in-app alerts on web |
 | Audio | `expo-audio` with bundled ambient WAV loops |
 | Animation and graphics | Reanimated 4, React Native SVG, Gifted Charts |
 | Design | Manrope and Lora typography, Lucide icons, shared theme tokens |
@@ -152,6 +180,7 @@ src/
     practice/            Manual logging and saved activity journal
     profile/             Profile, settings, and achievements
     programs/            Structured meditation programs
+    reminders/           Bangladesh-time scheduling, permissions, UI, and tests
     sleep/               Sleep library and sound data
   hooks/                 Local activity and date rollover
   mock/                  Content catalog and activity fixtures for tests
@@ -178,13 +207,13 @@ npm test
 npm run build:web
 ```
 
-The current automated suite contains **38 tests** covering date ranges and labels, calendar and leap-year boundaries, aggregation, comparisons, streaks, mood history, persistence and migration, exact playback credit, seeking, timers, midnight transitions, breathing intervals, manual records, program completion, and storage failures.
+The current automated suite contains **99 tests** covering date ranges and labels, calendar and leap-year boundaries, aggregation, comparisons, streaks, mood history, persistence and migration, exact playback credit, seeking, timers, midnight transitions, breathing intervals, manual records, program completion, storage failures, notification permissions, schedule rollback, cancellation, Bangladesh time, and browser cross-tab delivery.
 
-The responsive web interface has also been reviewed in a browser. Browser review, lint, type checking, and automated tests do not replace native device testing.
+The responsive web interface has also been reviewed in a browser. Browser review, lint, type checking, and automated tests do not replace native device testing. JavaScript exports for web, Android, and iOS have been verified.
 
 `npm run build:web` creates a deployable export in `dist/`. The app uses single-page web output: configure the production host to serve `index.html` for app routes so direct links such as `/analytics` and `/breathing?exercise=box` work.
 
-Before a production release, complete native iOS/Android validation and release builds, replace demonstration catalog content with the intended audio library, and implement any required account, sync, notification, or payment services.
+Before a production release, complete native iOS/Android validation and release builds, replace demonstration catalog content with the intended audio library, and implement any required account, sync, remote push, or payment services. Local reminder delivery is implemented without a backend.
 
 ## Development notes
 

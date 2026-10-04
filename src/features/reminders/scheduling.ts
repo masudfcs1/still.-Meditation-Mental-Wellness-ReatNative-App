@@ -72,18 +72,21 @@ export async function syncReminderSchedules(reminders: Reminder[], gateway: Sche
   const desired = createReminderPlan(reminders, options);
   const existing = await gateway.list();
   const owned = existing.filter(item => isReminderIdentifier(item.identifier));
-  // iOS allows 64 pending requests. Leave room for unrelated notifications and the test.
-  if (desired.length + existing.filter(item => !isReminderIdentifier(item.identifier) && item.identifier !== TEST_IDENTIFIER).length > 63) {
-    throw new Error('There are too many scheduled notifications on this device. Turn off another reminder and try again.');
-  }
   const byId = new Map(owned.map(item => [item.identifier, item]));
-  const newIdentifiers = desired.filter(item => !byId.has(item.identifier)).length;
-  if (existing.filter(item => item.identifier !== TEST_IDENTIFIER).length + newIdentifiers > 63) {
-    throw new Error('Turn off a reminder before adding more repeat days, then try again. This device is near its notification limit.');
-  }
   const desiredIds = new Set(desired.map(item => item.identifier));
   const changes = desired.filter(item => byId.get(item.identifier)?.signature !== item.signature);
   const obsolete = owned.filter(item => !desiredIds.has(item.identifier));
+  // iOS allows 64 pending requests. Reserve a test slot when scheduling new work,
+  // but never let a full queue prevent cancellation or an unchanged startup sync.
+  if (changes.length > 0) {
+    if (desired.length + existing.filter(item => !isReminderIdentifier(item.identifier) && item.identifier !== TEST_IDENTIFIER).length > 63) {
+      throw new Error('There are too many scheduled notifications on this device. Turn off another reminder and try again.');
+    }
+    const newIdentifiers = desired.filter(item => !byId.has(item.identifier)).length;
+    if (existing.filter(item => item.identifier !== TEST_IDENTIFIER).length + newIdentifiers > 63) {
+      throw new Error('Turn off a reminder before adding more repeat days, then try again. This device is near its notification limit.');
+    }
+  }
   const attempted: ReminderSchedule[] = [];
   const removed: ExistingSchedule[] = [];
   try {

@@ -117,7 +117,7 @@ export function saveReminder(reminder: Reminder): Promise<boolean> {
       }
       if (touchedSchedule) {
         try { await reminderDelivery.sync(previous); restored = true; }
-        catch { message += ' The previous schedule could not be restored. Tap Retry before relying on this reminder.'; }
+        catch { message += ' The previous schedule could not be restored. Try again before relying on this reminder.'; }
       }
       useReminderState.setState({ ready: restored && useReminderState.getState().ready, error: message });
       return false;

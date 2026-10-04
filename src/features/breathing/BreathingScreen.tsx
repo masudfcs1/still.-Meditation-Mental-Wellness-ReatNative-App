@@ -9,6 +9,8 @@ import { Button, Card, Chip, IconButton, PageTitle, T } from '../../components/u
 import { PracticeInterval, useAppStore } from '../../store/useAppStore';
 import { useTheme } from '../../theme';
 import { Navigate } from '../../types';
+import { BreathingMoments } from './BreathingMoments';
+import { breathingDurations, resolveBreathingDuration, type BreathingDuration, type BreathingMoment } from './presets';
 
 type PhaseName = 'Inhale' | 'Hold' | 'Exhale' | 'Rest';
 interface BreathingExercise { id: string; name: string; subtitle: string; description: string; benefit: string; pattern: { name: PhaseName; seconds: number }[] }
@@ -21,18 +23,20 @@ const exercises: BreathingExercise[] = [
 ];
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 const compactNames: Record<string, string> = { box: 'Box', '478': '4–7–8', deep: 'Deep', calm: 'Relaxation', focus: 'Focus' };
+const exercisePatterns = Object.fromEntries(exercises.map(exercise => [exercise.id, exercise.pattern]));
 
-export function BreathingScreen({ onNavigate }: { onNavigate: Navigate }) {
-  const { exercise: routeExercise } = useLocalSearchParams<{ exercise?: string }>();
+export function BreathingScreen({ onNavigate, onPrepare }: { onNavigate: Navigate; onPrepare?: () => void }) {
+  const { exercise: routeExercise, duration: routeDuration } = useLocalSearchParams<{ exercise?: string; duration?: string | string[] }>();
   const exerciseId = exercises.some(item => item.id === routeExercise) ? routeExercise! : 'box';
-  return <BreathingPractice key={exerciseId} exerciseId={exerciseId} onNavigate={onNavigate} />;
+  const initialDuration = resolveBreathingDuration(routeDuration);
+  return <BreathingPractice key={`${exerciseId}:${initialDuration}`} exerciseId={exerciseId} initialDuration={initialDuration} onNavigate={onNavigate} onPrepare={onPrepare} />;
 }
 
-function BreathingPractice({ onNavigate, exerciseId }: { onNavigate: Navigate; exerciseId: string }) {
+function BreathingPractice({ onNavigate, onPrepare, exerciseId, initialDuration }: { onNavigate: Navigate; onPrepare?: () => void; exerciseId: string; initialDuration: BreathingDuration }) {
   const t = useTheme();
   const { width } = useWindowDimensions();
   const circleSize = Math.min(286, width - 92);
-  const [duration, setDuration] = useState(3);
+  const [duration, setDuration] = useState<BreathingDuration>(initialDuration);
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -47,6 +51,7 @@ function BreathingPractice({ onNavigate, exerciseId }: { onNavigate: Navigate; e
   const favorites = useAppStore(s => s.favorites);
   const toggleFavorite = useAppStore(s => s.toggleFavorite);
   const recordBreathing = useAppStore(s => s.recordBreathing);
+  const notify = useAppStore(s => s.notify);
   const exercise = exercises.find(item => item.id === exerciseId)!;
   const cycleDuration = exercise.pattern.reduce((sum, step) => sum + step.seconds, 0);
   const cycle = Math.floor(elapsed / cycleDuration);
@@ -131,8 +136,16 @@ function BreathingPractice({ onNavigate, exerciseId }: { onNavigate: Navigate; e
     setRunning(false); setFinished(false); setElapsed(0); elapsedRef.current = 0; hasRecorded.current = false;
     scale.set(withTiming(0.72, { duration: 400, reduceMotion: ReduceMotion.System }));
   }
-  function chooseExercise(id: string) { reset(); router.setParams({ exercise: id }); }
-  function chooseDuration(minutes: number) { reset(); setDuration(minutes); }
+  function chooseExercise(id: string) { reset(); const nextDuration = id === exerciseId ? duration : 3; setDuration(nextDuration); router.setParams({ exercise: id, duration: String(nextDuration) }); }
+  function chooseDuration(minutes: BreathingDuration) { reset(); setDuration(minutes); router.setParams({ duration: String(minutes) }); }
+  function chooseMoment(moment: BreathingMoment) {
+    if (runningRef.current || (elapsedRef.current > 0 && !hasRecorded.current)) return;
+    reset();
+    setDuration(moment.duration);
+    router.setParams({ exercise: moment.exerciseId, duration: String(moment.duration) });
+    onPrepare?.();
+    notify(`${moment.title} is ready. Begin breathing above when you are ready.`);
+  }
   function togglePractice() {
     if (finished) { reset(); return; }
     if (runningRef.current) { pausePractice(); return; }
@@ -174,13 +187,14 @@ function BreathingPractice({ onNavigate, exerciseId }: { onNavigate: Navigate; e
         <View style={[styles.pattern, { borderColor: t.border }]}>{exercise.pattern.map((step, index) => <View key={`${step.name}-${index}`} style={{ alignItems: 'center', flex: 1, gap: 4 }}><View style={[styles.phaseDot, { backgroundColor: running && index === phaseIndex ? t.primary : t.border }]} /><T size={12} weight={index === phaseIndex && running ? 'semibold' : 'regular'} color={index === phaseIndex && running ? t.primary : t.secondary}>{step.name}</T><T size={11} color={t.muted}>{step.seconds}s</T></View>)}</View>
         <T size={12} color={t.secondary} style={{ maxWidth: 470, textAlign: 'center', alignSelf: 'center', marginTop: 21 }}>{exercise.description}</T>
         <View style={{ alignItems: 'center', gap: 14, marginTop: 26 }}>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>{[1, 3, 5, 10].map(minutes => <Chip key={minutes} label={`${minutes} min`} active={duration === minutes} onPress={() => chooseDuration(minutes)} />)}</View>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>{breathingDurations.map(minutes => <Chip key={minutes} label={`${minutes} min`} active={duration === minutes} onPress={() => chooseDuration(minutes)} />)}</View>
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}><Button icon={finished ? RotateCcw : running ? Pause : Play} label={finished ? 'Practice again' : running ? 'Pause practice' : elapsed > 0 ? 'Resume practice' : 'Begin breathing'} onPress={togglePractice} style={{ minWidth: width < 360 ? 180 : 196 }} />{elapsed > 0 && !finished && <IconButton icon={RotateCcw} label="Reset breathing practice" onPress={reset} />}</View>
           <T size={11} color={t.secondary}>{finished ? 'Your practice has been added to your activity.' : `${clock(Math.max(0, duration * 60 - elapsed))} remaining · ${cycle + 1} ${cycle === 0 ? 'cycle' : 'cycles'}`}</T>
         </View>
       </Card>
     </View>
     <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 22, alignItems: 'center' }}><Sparkles size={13} color={t.secondary} /><T size={11} color={t.secondary} style={{ flexShrink: 1 }}>Keep the breath comfortable. Return to normal breathing whenever you need.</T></View>
+    <BreathingMoments exerciseId={exerciseId} duration={duration} locked={running || (elapsed > 0 && !finished)} patterns={exercisePatterns} onChoose={chooseMoment} />
   </View>;
 }
 

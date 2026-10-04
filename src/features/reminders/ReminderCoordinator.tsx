@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';
 import { router, useRootNavigationState } from 'expo-router';
 import { Bell, X } from 'lucide-react-native';
@@ -16,9 +16,15 @@ export function ReminderCoordinator() {
   const hydrated = useAppStore(state => state.hasHydrated);
   const navigation = useRootNavigationState();
   const [incoming, setIncoming] = useState<ReminderMessage | null>(null);
-  const [destination, setDestination] = useState<ReminderMessage['route'] | null>(null);
+  const pendingDestination = useRef<ReminderMessage['route'] | null>(null);
 
-  useEffect(() => reminderDelivery.subscribe({ onReceive: setIncoming, onOpen: setDestination }), []);
+  useEffect(() => reminderDelivery.subscribe({
+    onReceive: setIncoming,
+    onOpen: route => {
+      if (navigation?.key) { router.navigate(route); setIncoming(null); }
+      else pendingDestination.current = route;
+    },
+  }), [navigation?.key]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -30,12 +36,11 @@ export function ReminderCoordinator() {
   }, [hydrated]);
 
   useEffect(() => {
-    if (destination && navigation?.key) {
-      router.navigate(destination);
-      setDestination(null);
-      setIncoming(null);
+    if (pendingDestination.current && navigation?.key) {
+      router.navigate(pendingDestination.current);
+      pendingDestination.current = null;
     }
-  }, [destination, navigation?.key]);
+  }, [navigation?.key]);
 
   useEffect(() => {
     if (!incoming) return;
@@ -44,7 +49,7 @@ export function ReminderCoordinator() {
   }, [incoming]);
 
   if (!incoming) return null;
-  return <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 76, left: 16, right: 16, alignItems: 'center', zIndex: 3000 }}>
+  return <View style={{ pointerEvents: 'box-none', position: 'absolute', top: insets.top + 76, left: 16, right: 16, alignItems: 'center', zIndex: 3000 }}>
     <View accessibilityRole="alert" accessibilityLiveRegion="assertive" style={{ width: '100%', maxWidth: 420, borderRadius: 20, borderWidth: 1, borderColor: t.primary, backgroundColor: t.surface, padding: 20, boxShadow: '0px 8px 32px rgba(18,33,23,0.18)' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <Bell color={t.primary} size={20} />
@@ -53,7 +58,7 @@ export function ReminderCoordinator() {
       </View>
       <T size={20} weight="display" style={{ marginTop: 5 }}>{incoming.title}</T>
       <T size={12} color={t.secondary} style={{ marginTop: 6, marginBottom: 18 }}>{incoming.body}</T>
-      <Button label="Take a moment" onPress={() => setDestination(incoming.route)} small />
+      <Button label="Take a moment" onPress={() => { router.navigate(incoming.route); setIncoming(null); }} small />
     </View>
   </View>;
 }

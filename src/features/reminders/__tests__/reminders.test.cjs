@@ -186,3 +186,23 @@ test('invalid input and platform capacity failures leave existing scheduled noti
   await assert.rejects(syncReminderSchedules([reminder({ time: '25:00' })], gateway), /valid time/);
   assert.equal(gateway.calls.length, 0);
 });
+
+test('a full notification queue never blocks turning reminders off or permission-revocation cleanup', async () => {
+  const owned = createReminderPlan([reminder()]);
+  const unrelated = Array.from({ length: 64 }, (_, index) => ({ identifier: `unrelated-${index}` }));
+  for (const next of [[reminder({ enabled: false })], []]) {
+    const gateway = fakeGateway([...owned, ...unrelated]);
+    await syncReminderSchedules(next, gateway);
+    assert.deepEqual([...gateway.jobs.keys()], unrelated.map(job => job.identifier));
+    assert.deepEqual(gateway.calls, owned.map(job => ['cancel', job.identifier]));
+  }
+});
+
+test('an unchanged schedule above the reserved capacity remains an idempotent no-op', async () => {
+  const owned = createReminderPlan([reminder()]);
+  const unrelated = Array.from({ length: 59 }, (_, index) => ({ identifier: `unrelated-${index}` }));
+  const gateway = fakeGateway([...owned, ...unrelated]);
+  await syncReminderSchedules([reminder()], gateway);
+  assert.equal(gateway.jobs.size, 64);
+  assert.deepEqual(gateway.calls, []);
+});
